@@ -29,12 +29,16 @@ import org.dasein.cloud.compute.VirtualMachineProduct;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class OpenstackServiceProviderTest {
+import com.infinities.skyport.testcase.IntegrationTest;
 
-	private static final Logger logger = LoggerFactory.getLogger(OpenstackServiceProviderTest.class);
+@Category(IntegrationTest.class)
+public class OpenstackServiceProviderIT {
+
+	private static final Logger logger = LoggerFactory.getLogger(OpenstackServiceProviderIT.class);
 	private CloudProvider provider;
 
 
@@ -118,8 +122,8 @@ public class OpenstackServiceProviderTest {
 
 	@Test
 	public void test() throws InternalException, CloudException {
-		Iterable<VirtualMachineProduct> products =
-				provider.getComputeServices().getVirtualMachineSupport().listAllProducts();
+		Iterable<VirtualMachineProduct> products = provider.getComputeServices().getVirtualMachineSupport()
+				.listAllProducts();
 		Iterator<VirtualMachineProduct> iterator = products.iterator();
 		while (iterator.hasNext()) {
 			VirtualMachineProduct product = iterator.next();
