@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *******************************************************************************/
-package com.infinities.skyport;
+package com.infinities.skyport.openstack;
 
 import java.util.Collections;
 
@@ -35,23 +35,25 @@ import org.dasein.cloud.util.CacheLevel;
 import org.dasein.util.uom.time.Day;
 import org.dasein.util.uom.time.TimePeriod;
 
-import com.infinities.skyport.annotation.Provider;
-
-@Provider(enumeration = { "DELL", "DREAMHOST", "HP", "IBM", "METACLOUD", "RACKSPACE", "OTHER" })
-public class OpenstackServiceProvider extends NovaOpenStack implements ServiceProvider {
-
-	@Override
-	public void initialize() {
-
-	}
+/**
+ * This is a customized version of
+ * org.dasein.cloud.openstack.nova.os.NovaOpenStack.
+ * <p>
+ * Created by Pohsun Huang: 12/23/15 10:57 AM
+ * </p>
+ * 
+ * @author Pohsun Huang
+ * @version 2015.12 initial version
+ * @since 2015.12
+ */
+public class SkyportNovaOpenStack extends NovaOpenStack {
 
 	@Override
 	public synchronized @Nonnull AuthenticationContext getAuthenticationContext() throws CloudException, InternalException {
 		APITrace.begin(this, "Cloud.getAuthenticationContext");
 		try {
-			Cache<AuthenticationContext> cache =
-					Cache.getInstance(this, "authenticationContext", AuthenticationContext.class, CacheLevel.REGION_ACCOUNT,
-							new TimePeriod<Day>(1, TimePeriod.DAY));
+			Cache<AuthenticationContext> cache = Cache.getInstance(this, "authenticationContext",
+					AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 			ProviderContext ctx = getContext();
 
 			if (ctx == null) {
@@ -60,7 +62,7 @@ public class OpenstackServiceProvider extends NovaOpenStack implements ServicePr
 			Iterable<AuthenticationContext> current = cache.get(ctx);
 			AuthenticationContext authenticationContext = null;
 
-			NovaMethod method = new CustomNovaMethod(this);
+			NovaMethod method = new SkyportNovaMethod(this);
 
 			if (current != null) {
 				authenticationContext = current.iterator().next();
@@ -78,7 +80,6 @@ public class OpenstackServiceProvider extends NovaOpenStack implements ServicePr
 						throw new NovaException(items);
 					}
 					cache.put(ctx, Collections.singletonList(authenticationContext));
-					return authenticationContext;
 				}
 			}
 			return authenticationContext;
@@ -91,7 +92,7 @@ public class OpenstackServiceProvider extends NovaOpenStack implements ServicePr
 	public @Nonnull ContextRequirements getContextRequirements() {
 		return new ContextRequirements(new ContextRequirements.Field("apiKey", "The API Keypair",
 				ContextRequirements.FieldType.KEYPAIR, ContextRequirements.Field.ACCESS_KEYS, true),
-				new ContextRequirements.Field("urlType", "The API URL Type: public or internal",
-						ContextRequirements.FieldType.TEXT, true));
+				new ContextRequirements.Field("urlType", "The API URL Type: public or internal(default:public)",
+						ContextRequirements.FieldType.TEXT, false));
 	}
 }

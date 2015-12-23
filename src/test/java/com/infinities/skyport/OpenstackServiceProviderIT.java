@@ -15,12 +15,12 @@
  *******************************************************************************/
 package com.infinities.skyport;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import org.dasein.cloud.Cloud;
 import org.dasein.cloud.CloudException;
-import org.dasein.cloud.CloudProvider;
 import org.dasein.cloud.ContextRequirements;
 import org.dasein.cloud.InternalException;
 import org.dasein.cloud.ProviderContext;
@@ -33,13 +33,15 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.infinities.skyport.compute.entity.MinimalResource;
+import com.infinities.skyport.openstack.OpenstackServiceProvider;
 import com.infinities.skyport.testcase.IntegrationTest;
 
 @Category(IntegrationTest.class)
 public class OpenstackServiceProviderIT {
 
 	private static final Logger logger = LoggerFactory.getLogger(OpenstackServiceProviderIT.class);
-	private CloudProvider provider;
+	private OpenstackServiceProvider provider;
 
 
 	@Before
@@ -62,8 +64,9 @@ public class OpenstackServiceProviderIT {
 
 		// Load the values for the required fields from the system properties
 		@SuppressWarnings("rawtypes")
-		ProviderContext.Value[] values = new ProviderContext.Value[fields.size()];
-		values[0] = ProviderContext.Value.parseValue(fields.get(0), accessPublic, accessPrivate);
+		List<ProviderContext.Value> values = new ArrayList<ProviderContext.Value>();
+		values.add(ProviderContext.Value.parseValue(fields.get(0), accessPublic, accessPrivate));
+		values.add(ProviderContext.Value.parseValue(fields.get(1), "internalURL"));
 
 		StringBuilder requireds = new StringBuilder();
 		requireds.append("Required fields:");
@@ -81,39 +84,13 @@ public class OpenstackServiceProviderIT {
 			}
 		}
 		logger.debug("{}", optionals.toString());
-		// for (ContextRequirements.Field f : fields) {
-		// StringBuilder field = new StringBuilder();
-		// field.append("Loading '" + f.name + "' from ");
-		// if (f.type.equals(ContextRequirements.FieldType.KEYPAIR)) {
-		// field.append("'" + f.name + "_SHARED' and '" + f.name + "_SECRET'");
-		// String shared = configuration.getProperties().getProperty(f.name +
-		// "_SHARED");
-		// String secret = configuration.getProperties().getProperty(f.name +
-		// "_SECRET");
-		//
-		// if (shared != null && secret != null) {
-		// values[i] = ProviderContext.Value.parseValue(f, shared, secret);
-		// } else if (f.required) {
-		// throw new IllegalArgumentException("Missing required field: " +
-		// f.name);
-		// }
-		// } else {
-		// field.append("'" + f.name + "'");
-		// String value = configuration.getProperties().getProperty(f.name);
-		//
-		// if (value != null) {
-		// values[i] = ProviderContext.Value.parseValue(f, value);
-		// } else if (f.required) {
-		// throw new IllegalArgumentException("Missing required field: " +
-		// f.name);
-		// }
-		// }
-		// i++;
-		// logger.debug("{}", field.toString());
-		// }
+		for (ProviderContext.Value value : values) {
+			logger.debug("name:{}, value:{}", new Object[] { value.name });
+		}
 
-		ProviderContext ctx = cloud.createContext(accountNumber, regionId, values);
-		provider = ctx.connect();
+		ProviderContext ctx = cloud.createContext(accountNumber, regionId,
+				values.toArray(new ProviderContext.Value[values.size()]));
+		provider = (OpenstackServiceProvider) ctx.connect();
 	}
 
 	@After
@@ -149,6 +126,18 @@ public class OpenstackServiceProviderIT {
 		System.err.println("testing");
 		while (iterator.hasNext()) {
 			VirtualMachine vm = iterator.next();
+			System.err.println(vm.toString());
+		}
+
+	}
+
+	@Test
+	public void testListMinimalVirtualMachine() throws InternalException, CloudException {
+		Iterable<MinimalResource> vms = provider.getSkyportComputeServices().getSkyportVirtualMachineSupport()
+				.listMinimalVirtualMachines();
+		Iterator<MinimalResource> iterator = vms.iterator();
+		while (iterator.hasNext()) {
+			MinimalResource vm = iterator.next();
 			System.err.println(vm.toString());
 		}
 

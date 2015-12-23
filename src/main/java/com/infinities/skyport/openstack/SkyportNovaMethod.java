@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *******************************************************************************/
-package com.infinities.skyport;
+package com.infinities.skyport.openstack;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -81,12 +81,25 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class CustomNovaMethod extends NovaMethod {
+import com.google.common.base.Strings;
+
+/**
+ * This is a customized version of
+ * org.dasein.cloud.openstack.nova.os.NovaMethod.
+ * <p>
+ * Created by Pohsun Huang: 12/23/15 10:57 AM
+ * </p>
+ * 
+ * @author Pohsun Huang
+ * @version 2015.12 initial version
+ * @since 2015.12
+ */
+public class SkyportNovaMethod extends NovaMethod {
 
 	protected NovaOpenStack provider;
 
 
-	public CustomNovaMethod(NovaOpenStack provider) {
+	public SkyportNovaMethod(NovaOpenStack provider) {
 		super(provider);
 		this.provider = provider;
 	}
@@ -174,7 +187,12 @@ public class CustomNovaMethod extends NovaMethod {
 						accessPrivate = new String(keyPair[1], "utf-8");
 					}
 					if (f.type.equals(ContextRequirements.FieldType.TEXT) && f.name.equals("urlType")) {
-						urlType = (String) provider.getContext().getConfigurationValue(f);
+						String type = (String) provider.getContext().getConfigurationValue(f);
+						if (Strings.isNullOrEmpty(type)) {
+							urlType = "publicURL";
+						} else {
+							urlType = type;
+						}
 					}
 				}
 			} catch (UnsupportedEncodingException e) {
@@ -347,8 +365,8 @@ public class CustomNovaMethod extends NovaMethod {
 						token = auth.getJSONObject("token");
 						catalog = auth.getJSONArray("serviceCatalog");
 						id = (token.has("id") ? token.getString("id") : null);
-						tenantId =
-								((token.has("tenantId") && !token.isNull("tenantId")) ? token.getString("tenantId") : null);
+						tenantId = ((token.has("tenantId") && !token.isNull("tenantId")) ? token.getString("tenantId")
+								: null);
 						if (tenantId == null && token.has("tenant") && !token.isNull("tenant")) {
 							JSONObject t = token.getJSONObject("tenant");
 
@@ -892,9 +910,8 @@ public class CustomNovaMethod extends NovaMethod {
 			delete(context.getAuthToken(), endpoint, resourceUri);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				deleteResource(service, resource, resourceId, suffix);
 			} else {
@@ -999,9 +1016,8 @@ public class CustomNovaMethod extends NovaMethod {
 	}
 
 	@Override
-	public @Nullable String[]
-			getItemList(@Nonnull final String service, @Nonnull final String resource, final boolean suffix)
-					throws CloudException, InternalException {
+	public @Nullable String[] getItemList(@Nonnull final String service, @Nonnull final String resource, final boolean suffix)
+			throws CloudException, InternalException {
 		AuthenticationContext context = provider.getAuthenticationContext();
 		String endpoint = context.getServiceUrl(service);
 
@@ -1032,9 +1048,8 @@ public class CustomNovaMethod extends NovaMethod {
 			return items;
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return getItemList(service, resource, suffix);
 			} else {
@@ -1075,9 +1090,8 @@ public class CustomNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return getResource(service, resource, resourceId, suffix);
 			} else {
@@ -1440,9 +1454,8 @@ public class CustomNovaMethod extends NovaMethod {
 			return head(context.getAuthToken(), endpoint, resourceUri);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return headResource(service, resource, resourceId);
 			} else {
@@ -1564,9 +1577,8 @@ public class CustomNovaMethod extends NovaMethod {
 			postHeaders(context.getAuthToken(), endpoint, resource + "/" + resourceId, headers);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				postResourceHeaders(service, resource, resourceId, headers);
 			} else {
@@ -1662,8 +1674,8 @@ public class CustomNovaMethod extends NovaMethod {
 								int min = ob.getInt("retryAfter");
 
 								if (min < 1) {
-									throw new CloudException(CloudErrorType.CAPACITY, 413, "Over Limit", ob.has("message")
-											? ob.getString("message") : "Over Limit");
+									throw new CloudException(CloudErrorType.CAPACITY, 413, "Over Limit",
+											ob.has("message") ? ob.getString("message") : "Over Limit");
 								}
 								try {
 									Thread.sleep(CalendarWrapper.MINUTE * min);
@@ -1759,8 +1771,8 @@ public class CustomNovaMethod extends NovaMethod {
 			throw new CloudException("No " + service + " endpoint exists");
 		}
 		try {
-			String response =
-					postString(context.getAuthToken(), endpoint, resource + "/" + resourceId + "/" + extra, body.toString());
+			String response = postString(context.getAuthToken(), endpoint, resource + "/" + resourceId + "/" + extra,
+					body.toString());
 
 			if (response == null) {
 				return null;
@@ -1772,9 +1784,8 @@ public class CustomNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return postString(service, resource, resourceId, extra, body);
 			} else {
@@ -1810,9 +1821,8 @@ public class CustomNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return postString(service, resource, resourceId, body, suffix);
 			} else {
@@ -1910,8 +1920,8 @@ public class CustomNovaMethod extends NovaMethod {
 							int min = ob.optInt("retryAfter", 0);
 
 							if (min < 1) {
-								throw new CloudException(CloudErrorType.CAPACITY, 413, "Over Limit", ob.has("message")
-										? ob.getString("message") : "Over Limit");
+								throw new CloudException(CloudErrorType.CAPACITY, 413, "Over Limit",
+										ob.has("message") ? ob.getString("message") : "Over Limit");
 							}
 							try {
 								Thread.sleep(CalendarWrapper.MINUTE * min);
@@ -2162,9 +2172,8 @@ public class CustomNovaMethod extends NovaMethod {
 			putHeaders(context.getAuthToken(), endpoint, resourceUri, headers);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				putResourceHeaders(service, resource, resourceId, headers);
 			} else {
@@ -2327,9 +2336,8 @@ public class CustomNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache =
-						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
-								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
+						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return putString(service, resource, resourceId, body, suffix);
 			} else {
