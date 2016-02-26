@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *******************************************************************************/
-package com.infinities.skyport.openstack;
+package com.infinities.skyport.openstack.nova.os;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -2727,5 +2727,46 @@ public class SkyportNovaMethod extends NovaMethod {
 			return resource.substring(0, idx);
 		}
 		return resource;
+	}
+
+	public @Nullable JSONObject putServers(@Nonnull final String resource, @Nullable final String resourceId,
+			@Nonnull final JSONObject body, final String action) throws CloudException, InternalException {
+		AuthenticationContext context = provider.getAuthenticationContext();
+
+		String resourceUri = resource;
+		if (resourceId != null) {
+			resourceUri = resource + "/" + (action != null ? (resourceId + "/" + action) : resourceId);
+		}
+		String endpoint = context.getComputeUrl();
+
+		if (endpoint == null) {
+			throw new CloudException("No compute endpoint exists");
+		}
+
+		if (resourceUri != null && (!endpoint.endsWith("/") && !resourceUri.startsWith("/"))) {
+			endpoint = endpoint + "/";
+		}
+		try {
+			String response = putString(context.getAuthToken(), endpoint, resourceUri, body.toString());
+
+			if (response == null) {
+				return null;
+			}
+			try {
+				return new JSONObject(response);
+			} catch (JSONException e) {
+				throw new CloudException(CloudErrorType.COMMUNICATION, 200, "invalidJson", response);
+			}
+		} catch (NovaException ex) {
+			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				cache.clear();
+				return putServers(resource, resourceId, body, action);
+			} else {
+				throw ex;
+			}
+		}
 	}
 }

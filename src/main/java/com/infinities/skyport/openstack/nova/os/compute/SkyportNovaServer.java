@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 import org.apache.commons.net.util.SubnetUtils;
 import org.dasein.cloud.CloudErrorType;
 import org.dasein.cloud.CloudException;
@@ -42,7 +44,6 @@ import org.dasein.cloud.compute.VMLaunchOptions;
 import org.dasein.cloud.compute.VMScalingCapabilities;
 import org.dasein.cloud.compute.VMScalingOptions;
 import org.dasein.cloud.compute.VirtualMachine;
-import org.dasein.cloud.compute.VirtualMachineCapabilities;
 import org.dasein.cloud.compute.VirtualMachineProduct;
 import org.dasein.cloud.compute.VirtualMachineProductFilterOptions;
 import org.dasein.cloud.compute.VirtualMachineStatus;
@@ -67,7 +68,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Iterators;
+import com.infinities.skyport.compute.SkyportVirtualMachineCapabilities;
 import com.infinities.skyport.compute.SkyportVirtualMachineSupport;
+import com.infinities.skyport.compute.VMUpdateOptions;
 import com.infinities.skyport.compute.entity.MinimalResource;
 import com.infinities.skyport.compute.entity.NovaStyleVirtualMachine;
 import com.infinities.skyport.network.SkyportRawAddress;
@@ -88,12 +91,25 @@ public class SkyportNovaServer implements SkyportVirtualMachineSupport {
 
 	private static final Logger logger = LoggerFactory.getLogger(SkyportNovaServer.class);
 	private CustomNovaServer novaServer;
+	private NovaOpenStack provider;
 
+	private transient volatile SkyportNovaServerCapabilities capabilities;
+
+
+	@Nonnull
+	@Override
+	public SkyportVirtualMachineCapabilities getCapabilities() throws InternalException, CloudException {
+		if (capabilities == null) {
+			capabilities = new SkyportNovaServerCapabilities(provider);
+		}
+		return capabilities;
+	}
 
 	/**
 	 * @param provider
 	 */
 	public SkyportNovaServer(NovaOpenStack provider) {
+		this.provider = provider;
 		this.novaServer = new CustomNovaServer(provider);
 	}
 
@@ -163,17 +179,6 @@ public class SkyportNovaServer implements SkyportVirtualMachineSupport {
 	public VirtualMachine alterVirtualMachineSize(String virtualMachineId, String cpuCount, String ramInMB)
 			throws InternalException, CloudException {
 		return novaServer.alterVirtualMachineSize(virtualMachineId, cpuCount, ramInMB);
-	}
-
-	/**
-	 * @return
-	 * @throws InternalException
-	 * @throws CloudException
-	 * @see org.dasein.cloud.openstack.nova.os.compute.NovaServer#getCapabilities()
-	 */
-	@Override
-	public VirtualMachineCapabilities getCapabilities() throws InternalException, CloudException {
-		return novaServer.getCapabilities();
 	}
 
 	/**
@@ -1539,6 +1544,19 @@ public class SkyportNovaServer implements SkyportVirtualMachineSupport {
 			vm.setProviderFirewallIds(ids);
 		}
 		return vm;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.infinities.skyport.compute.SkyportVirtualMachineSupport#
+	 * updateVirtualMachine(java.lang.String,
+	 * com.infinities.skyport.compute.VMUpdateOptions)
+	 */
+	@Override
+	public VirtualMachine updateVirtualMachine(String virtualMachineId, VMUpdateOptions options) throws InternalException,
+			CloudException {
+		return novaServer.updateVirtualMachine(virtualMachineId, options);
 	}
 
 }
