@@ -365,8 +365,8 @@ public class SkyportNovaMethod extends NovaMethod {
 						token = auth.getJSONObject("token");
 						catalog = auth.getJSONArray("serviceCatalog");
 						id = (token.has("id") ? token.getString("id") : null);
-						tenantId = ((token.has("tenantId") && !token.isNull("tenantId")) ? token.getString("tenantId")
-								: null);
+						tenantId =
+								((token.has("tenantId") && !token.isNull("tenantId")) ? token.getString("tenantId") : null);
 						if (tenantId == null && token.has("tenant") && !token.isNull("tenant")) {
 							JSONObject t = token.getJSONObject("tenant");
 
@@ -910,8 +910,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			delete(context.getAuthToken(), endpoint, resourceUri);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				deleteResource(service, resource, resourceId, suffix);
 			} else {
@@ -1048,8 +1049,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			return items;
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return getItemList(service, resource, suffix);
 			} else {
@@ -1090,8 +1092,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return getResource(service, resource, resourceId, suffix);
 			} else {
@@ -1454,8 +1457,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			return head(context.getAuthToken(), endpoint, resourceUri);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return headResource(service, resource, resourceId);
 			} else {
@@ -1577,8 +1581,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			postHeaders(context.getAuthToken(), endpoint, resource + "/" + resourceId, headers);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				postResourceHeaders(service, resource, resourceId, headers);
 			} else {
@@ -1771,8 +1776,8 @@ public class SkyportNovaMethod extends NovaMethod {
 			throw new CloudException("No " + service + " endpoint exists");
 		}
 		try {
-			String response = postString(context.getAuthToken(), endpoint, resource + "/" + resourceId + "/" + extra,
-					body.toString());
+			String response =
+					postString(context.getAuthToken(), endpoint, resource + "/" + resourceId + "/" + extra, body.toString());
 
 			if (response == null) {
 				return null;
@@ -1784,8 +1789,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return postString(service, resource, resourceId, extra, body);
 			} else {
@@ -1821,8 +1827,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return postString(service, resource, resourceId, body, suffix);
 			} else {
@@ -2172,8 +2179,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			putHeaders(context.getAuthToken(), endpoint, resourceUri, headers);
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				putResourceHeaders(service, resource, resourceId, headers);
 			} else {
@@ -2336,8 +2344,9 @@ public class SkyportNovaMethod extends NovaMethod {
 			}
 		} catch (NovaException ex) {
 			if (ex.getHttpCode() == HttpStatus.SC_UNAUTHORIZED) {
-				Cache<AuthenticationContext> cache = Cache.getInstance(provider, "authenticationContext",
-						AuthenticationContext.class, CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
+				Cache<AuthenticationContext> cache =
+						Cache.getInstance(provider, "authenticationContext", AuthenticationContext.class,
+								CacheLevel.REGION_ACCOUNT, new TimePeriod<Day>(1, TimePeriod.DAY));
 				cache.clear();
 				return putString(service, resource, resourceId, body, suffix);
 			} else {

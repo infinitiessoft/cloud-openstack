@@ -26,6 +26,7 @@ import org.dasein.cloud.InternalException;
 import org.dasein.cloud.ProviderContext;
 import org.dasein.cloud.compute.VirtualMachine;
 import org.dasein.cloud.compute.VirtualMachineProduct;
+import org.dasein.cloud.dc.Region;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,8 +89,8 @@ public class OpenstackServiceProviderIT {
 			logger.debug("name:{}, value:{}", new Object[] { value.name });
 		}
 
-		ProviderContext ctx = cloud.createContext(accountNumber, regionId,
-				values.toArray(new ProviderContext.Value[values.size()]));
+		ProviderContext ctx =
+				cloud.createContext(accountNumber, regionId, values.toArray(new ProviderContext.Value[values.size()]));
 		provider = (OpenstackServiceProvider) ctx.connect();
 	}
 
@@ -99,8 +100,8 @@ public class OpenstackServiceProviderIT {
 
 	@Test
 	public void test() throws InternalException, CloudException {
-		Iterable<VirtualMachineProduct> products = provider.getComputeServices().getVirtualMachineSupport()
-				.listAllProducts();
+		Iterable<VirtualMachineProduct> products =
+				provider.getComputeServices().getVirtualMachineSupport().listAllProducts();
 		Iterator<VirtualMachineProduct> iterator = products.iterator();
 		while (iterator.hasNext()) {
 			VirtualMachineProduct product = iterator.next();
@@ -133,12 +134,23 @@ public class OpenstackServiceProviderIT {
 
 	@Test
 	public void testListMinimalVirtualMachine() throws InternalException, CloudException {
-		Iterable<MinimalResource> vms = provider.getSkyportComputeServices().getSkyportVirtualMachineSupport()
-				.listMinimalVirtualMachines();
+		Iterable<MinimalResource> vms =
+				provider.getSkyportComputeServices().getSkyportVirtualMachineSupport().listMinimalVirtualMachines();
 		Iterator<MinimalResource> iterator = vms.iterator();
 		while (iterator.hasNext()) {
 			MinimalResource vm = iterator.next();
 			System.err.println(vm.toString());
+		}
+
+	}
+
+	@Test
+	public void testListRegion() throws InternalException, CloudException {
+		Iterable<Region> regions = provider.getAuthenticationContext().listRegions();
+		Iterator<Region> iterator = regions.iterator();
+		while (iterator.hasNext()) {
+			Region region = iterator.next();
+			System.err.println(region.toString());
 		}
 
 	}

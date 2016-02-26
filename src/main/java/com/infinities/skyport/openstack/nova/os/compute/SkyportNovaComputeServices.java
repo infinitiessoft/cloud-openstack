@@ -15,6 +15,9 @@
  *******************************************************************************/
 package com.infinities.skyport.openstack.nova.os.compute;
 
+import javax.annotation.Nonnull;
+
+import org.dasein.cloud.compute.VolumeSupport;
 import org.dasein.cloud.openstack.nova.os.NovaOpenStack;
 import org.dasein.cloud.openstack.nova.os.compute.NovaComputeServices;
 
@@ -51,6 +54,11 @@ public class SkyportNovaComputeServices extends NovaComputeServices implements S
 	@Override
 	public SkyportVirtualMachineSupport getSkyportVirtualMachineSupport() {
 		return new SkyportNovaServer(super.getProvider());
+	}
+
+	@Override
+	public @Nonnull VolumeSupport getVolumeSupport() {
+		return new SkyportCinderVolume(getProvider());
 	}
 
 }

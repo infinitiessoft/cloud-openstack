@@ -15,24 +15,41 @@
  *******************************************************************************/
 package org.dasein.cloud.openstack.nova.os.compute;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nonnull;
 
+import org.apache.commons.codec.binary.Base64;
 import org.dasein.cloud.CloudException;
 import org.dasein.cloud.InternalException;
+import org.dasein.cloud.compute.MachineImage;
 import org.dasein.cloud.compute.Platform;
+import org.dasein.cloud.compute.VMLaunchOptions;
+import org.dasein.cloud.compute.VirtualMachine;
+import org.dasein.cloud.compute.VmState;
 import org.dasein.cloud.network.Firewall;
 import org.dasein.cloud.network.FirewallSupport;
+import org.dasein.cloud.network.IpAddress;
 import org.dasein.cloud.network.NetworkServices;
+import org.dasein.cloud.network.Subnet;
+import org.dasein.cloud.network.VLAN;
 import org.dasein.cloud.openstack.nova.os.NovaMethod;
 import org.dasein.cloud.openstack.nova.os.NovaOpenStack;
 import org.dasein.cloud.openstack.nova.os.OpenStackProvider;
+import org.dasein.cloud.openstack.nova.os.network.NovaNetworkServices;
+import org.dasein.cloud.openstack.nova.os.network.Quantum;
+import org.dasein.cloud.util.APITrace;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is a customized version of
@@ -48,8 +65,8 @@ import org.json.JSONObject;
  */
 public class CustomNovaServer extends NovaServer {
 
-	// private final Logger logger =
-	// LoggerFactory.getLogger(CustomNovaServer.class);
+	private final Logger logger = LoggerFactory.getLogger(CustomNovaServer.class);
+
 
 	/**
 	 * @param provider
@@ -153,6 +170,229 @@ public class CustomNovaServer extends NovaServer {
 			}
 		} catch (JSONException e) {
 			throw new CloudException(e);
+		}
+	}
+
+	@Override
+	public @Nonnull VirtualMachine launch(@Nonnull VMLaunchOptions options) throws CloudException, InternalException {
+		APITrace.begin(getProvider(), "VM.launch");
+		VirtualMachine vm = null;
+		String portId = null;
+		try {
+			MachineImage targetImage =
+					getProvider().getComputeServices().getImageSupport().getImage(options.getMachineImageId());
+
+			// Additional LPAR Call
+			boolean isBareMetal = false;
+			try {
+				String lparMetadataKey = "hypervisor_type";
+				String lparMetadataValue = "Hitachi";
+				JSONObject ob =
+						getMethod().getServers("/images/" + options.getMachineImageId() + "/metadata", lparMetadataKey,
+								false);
+				if (ob.has("metadata")) {
+					JSONObject metadata = ob.getJSONObject("metadata");
+					if (metadata.has(lparMetadataKey) && metadata.getString(lparMetadataKey).equals(lparMetadataValue))
+						isBareMetal = true;
+				}
+			} catch (Exception ex) {
+				// Something failed while checking Hitachi LPAR metadata
+				logger.error("Failed to find Hitachi LPAR metadata");
+			}
+
+			if (targetImage == null) {
+				throw new CloudException("No such machine image: " + options.getMachineImageId());
+			}
+			Map<String, Object> wrapper = new HashMap<String, Object>();
+			Map<String, Object> json = new HashMap<String, Object>();
+
+			json.put("name", options.getHostName());
+			if (options.getBootstrapPassword() != null) {
+				json.put("adminPass", options.getBootstrapPassword());
+			}
+			if (options.getUserData() != null) {
+				try {
+					json.put("user_data", Base64.encodeBase64String(options.getUserData().getBytes("utf-8")));
+				} catch (UnsupportedEncodingException e) {
+					throw new InternalException(e);
+				}
+			}
+			if (getMinorVersion() == 0 && getMajorVersion() == 1) {
+				json.put("imageId", String.valueOf(options.getMachineImageId()));
+				json.put("flavorId", options.getStandardProductId());
+			} else {
+				if (getProvider().getProviderName().equals("HP")) {
+					json.put("imageRef", options.getMachineImageId());
+				} else {
+					json.put("imageRef",
+							getProvider().getComputeServices().getImageSupport().getImageRef(options.getMachineImageId()));
+				}
+				json.put("flavorRef", getFlavorRef(options.getStandardProductId()));
+			}
+
+			if (options.getVlanId() != null) {
+				List<Map<String, Object>> vlans = new ArrayList<Map<String, Object>>();
+				Map<String, Object> vlan = new HashMap<String, Object>();
+
+				vlan.put("uuid", options.getVlanId());
+				vlans.add(vlan);
+				json.put("networks", vlans);
+			} else {
+				if (options.getSubnetId() != null && !getProvider().isRackspace()) {
+					NovaNetworkServices services = getProvider().getNetworkServices();
+
+					if (services != null) {
+						Quantum support = services.getVlanSupport();
+
+						if (support != null) {
+							List<Map<String, Object>> vlans = new ArrayList<Map<String, Object>>();
+							Map<String, Object> vlan = new HashMap<String, Object>();
+
+							try {
+								portId =
+										support.createPort(options.getSubnetId(), options.getHostName(),
+												options.getFirewallIds());
+								vlan.put("port", portId);
+								vlans.add(vlan);
+								json.put("networks", vlans);
+								options.withMetaData("org.dasein.portId", portId);
+							} catch (CloudException e) {
+								if (e.getHttpCode() != 403) {
+									throw new CloudException(e.getMessage());
+								}
+
+								logger.warn("Unable to create port - trying to launch into general network");
+								Subnet subnet = support.getSubnet(options.getSubnetId());
+
+								vlan.put("uuid", subnet.getProviderVlanId());
+								vlans.add(vlan);
+								json.put("networks", vlans);
+							}
+						}
+					}
+				}
+			}
+			if (options.getBootstrapKey() != null) {
+				json.put("key_name", options.getBootstrapKey());
+			}
+			if (options.getDataCenterId() != null) {
+				json.put("os-availability-zone:availability_zone", options.getDataCenterId());
+			}
+			if (options.getFirewallIds().length > 0) {
+				List<Map<String, Object>> firewalls = new ArrayList<Map<String, Object>>();
+
+				for (String id : options.getFirewallIds()) {
+					NetworkServices services = getProvider().getNetworkServices();
+					Firewall firewall = null;
+
+					if (services != null) {
+						FirewallSupport support = services.getFirewallSupport();
+
+						if (support != null) {
+							firewall = support.getFirewall(id);
+						}
+					}
+					if (firewall != null) {
+						Map<String, Object> fw = new HashMap<String, Object>();
+
+						fw.put("name", firewall.getName());
+						firewalls.add(fw);
+					}
+				}
+				json.put("security_groups", firewalls);
+			}
+
+			if (isBareMetal) {
+				Map<String, String> blockDeviceMapping = new HashMap<String, String>();
+				// blockDeviceMapping.put("device_name", "/dev/sdb1");
+				blockDeviceMapping.put("boot_index", "0");
+				blockDeviceMapping.put("uuid",
+						getProvider().getComputeServices().getImageSupport().getImageRef(options.getMachineImageId()));
+				// blockDeviceMapping.put("guest_format", "ephemeral");
+				String volumeSize = "";
+				if (targetImage.getTag("minDisk") != null) {
+					volumeSize = (String) targetImage.getTag("minDisk");
+				} else {
+					String minSize = (String) targetImage.getTag("minSize");
+					volumeSize = roundUpToGB(Long.valueOf(minSize)) + "";
+				}
+				blockDeviceMapping.put("volume_size", volumeSize);
+				blockDeviceMapping.put("source_type", "image");
+				blockDeviceMapping.put("destination_type", "volume");
+				blockDeviceMapping.put("delete_on_termination", "True");
+				json.put("block_device_mapping_v2", blockDeviceMapping);
+			}
+
+			if (!targetImage.getPlatform().equals(Platform.UNKNOWN)) {
+				options.withMetaData("org.dasein.platform", targetImage.getPlatform().name());
+			}
+			options.withMetaData("org.dasein.description", options.getDescription());
+			Map<String, Object> tmpMeta = options.getMetaData();
+			Map<String, Object> newMeta = new HashMap<String, Object>();
+			for (Map.Entry<String, Object> entry : tmpMeta.entrySet()) {
+				if (entry.getValue() != null) { // null values not supported by
+												// openstack
+					newMeta.put(entry.getKey().toString(), entry.getValue());
+				}
+			}
+			json.put("metadata", newMeta);
+			wrapper.put("server", json);
+			JSONObject result =
+					getMethod().postServers(isBareMetal ? "/os-volumes_boot" : "/servers", null, new JSONObject(wrapper),
+							true);
+
+			if (result.has("server")) {
+				try {
+					Collection<IpAddress> ips = Collections.emptyList();
+					Collection<VLAN> nets = Collections.emptyList();
+
+					JSONObject server = result.getJSONObject("server");
+					vm = toVirtualMachine(server, ips, ips, nets);
+
+					if (vm != null) {
+						String vmId = vm.getProviderVirtualMachineId();
+						long timeout = System.currentTimeMillis() + 5 * 60 * 1000;
+						while ((vm == null || vm.getCurrentState() == null) && System.currentTimeMillis() < timeout) {
+							try {
+								Thread.sleep(5000);
+							} catch (InterruptedException ignore) {
+							}
+							vm = getVirtualMachine(vmId);
+						}
+						if (vm == null || vm.getCurrentState() == null) {
+							throw new CloudException("VM failed to launch with a meaningful status");
+						}
+						return vm;
+					}
+				} catch (JSONException e) {
+					logger.error("launch(): Unable to understand launch response: " + e.getMessage());
+					if (logger.isTraceEnabled()) {
+						e.printStackTrace();
+					}
+					throw new CloudException(e);
+				}
+			}
+			logger.error("launch(): No server was created by the launch attempt, and no error was returned");
+			throw new CloudException("No virtual machine was launched");
+
+		} finally {
+			if (portId != null && (vm == null || VmState.ERROR.equals(vm.getCurrentState()))) { // if
+																								// launch
+																								// fails
+																								// or
+																								// instance
+																								// in
+																								// error
+																								// state
+																								// -
+																								// remove
+																								// port
+				Quantum quantum = getProvider().getNetworkServices().getVlanSupport();
+				if (quantum != null) {
+					quantum.removePort(portId);
+				}
+			}
+			APITrace.end();
 		}
 	}
 

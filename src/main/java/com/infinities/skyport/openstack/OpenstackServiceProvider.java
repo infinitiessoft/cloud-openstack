@@ -15,12 +15,17 @@
  *******************************************************************************/
 package com.infinities.skyport.openstack;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.lang3.concurrent.ConcurrentException;
+import org.dasein.cloud.openstack.nova.os.network.SkyportNovaNetworkServices;
 
 import com.infinities.skyport.ServiceProvider;
 import com.infinities.skyport.annotation.Provider;
 import com.infinities.skyport.compute.SkyportComputeServices;
+import com.infinities.skyport.dc.SkyportDataCenterServices;
 import com.infinities.skyport.openstack.nova.os.compute.SkyportNovaComputeServices;
+import com.infinities.skyport.openstack.nova.os.dc.SkyportNovaLocationServices;
 
 @Provider(enumeration = { "DELL", "DREAMHOST", "HP", "IBM", "METACLOUD", "RACKSPACE", "OTHER" })
 public class OpenstackServiceProvider extends SkyportNovaOpenStack implements ServiceProvider {
@@ -44,6 +49,26 @@ public class OpenstackServiceProvider extends SkyportNovaOpenStack implements Se
 	@Override
 	public SkyportComputeServices getSkyportComputeServices() {
 		return new SkyportNovaComputeServices(this);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.infinities.skyport.ServiceProvider#getDataCenterServices()
+	 */
+	@Override
+	public SkyportDataCenterServices getSkyportDataCenterServices() {
+		return new SkyportNovaLocationServices(this);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.infinities.skyport.ServiceProvider#getSkyportNetworkServices()
+	 */
+	@Override
+	public @Nullable SkyportNovaNetworkServices getSkyportNetworkServices() {
+		return new SkyportNovaNetworkServices(this);
 	}
 
 }
