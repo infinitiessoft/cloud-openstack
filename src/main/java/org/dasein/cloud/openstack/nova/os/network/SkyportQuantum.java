@@ -325,22 +325,22 @@ public class SkyportQuantum extends Quantum implements SkyportVLANSupport {
 				nic.setProviderVlanId(port.getString("net_id"));
 			}
 			if (port.has("binding:host_id")) {
-				nic.getTags().put("binding:host_id", port.getString("binding:host_id"));
+				nic.setTag("binding:host_id", port.getString("binding:host_id"));
 			}
 			if (port.has("device_owner")) {
-				nic.getTags().put("device_owner", port.getString("device_owner"));
+				nic.setTag("device_owner", port.getString("device_owner"));
 			}
 			if (port.has("device_id")) {
-				nic.getTags().put("device_id", port.getString("device_id"));
+				nic.setTag("device_id", port.getString("device_id"));
 			}
 			if (port.has("admin_state_up")) {
-				nic.getTags().put("admin_state_up", port.getString("admin_state_up"));
+				nic.setTag("admin_state_up", port.getString("admin_state_up"));
 			}
 			if (port.has("binding:vnic_type")) {
-				nic.getTags().put("binding:vnic_type", port.getString("binding:vnic_type"));
+				nic.setTag("binding:vnic_type", port.getString("binding:vnic_type"));
 			}
 			if (port.has("binding:vif_type")) {
-				nic.getTags().put("binding:vif_type", port.getString("binding:vif_type"));
+				nic.setTag("binding:vif_type", port.getString("binding:vif_type"));
 			}
 
 			return nic;
