@@ -39,7 +39,6 @@ import org.dasein.cloud.network.IpAddress;
 import org.dasein.cloud.network.NetworkServices;
 import org.dasein.cloud.network.Subnet;
 import org.dasein.cloud.network.VLAN;
-import org.dasein.cloud.openstack.nova.os.NovaMethod;
 import org.dasein.cloud.openstack.nova.os.NovaOpenStack;
 import org.dasein.cloud.openstack.nova.os.OpenStackProvider;
 import org.dasein.cloud.openstack.nova.os.network.NovaNetworkServices;
@@ -50,6 +49,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.infinities.skyport.compute.VMUpdateOptions;
+import com.infinities.skyport.openstack.nova.os.SkyportNovaMethod;
 
 /**
  * This is a customized version of
@@ -76,8 +78,8 @@ public class CustomNovaServer extends NovaServer {
 	}
 
 	@Override
-	public NovaMethod getMethod() {
-		return new NovaMethod(getProvider());
+	public SkyportNovaMethod getMethod() {
+		return new SkyportNovaMethod(getProvider());
 	}
 
 	public NovaOpenStack getNovaOpenStack() {
@@ -401,4 +403,30 @@ public class CustomNovaServer extends NovaServer {
 			InternalException {
 		return super.getPlatform(vmName, vmDescription, imageId);
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see com.infinities.skyport.compute.SkyportVirtualMachineSupport#
+	 * updateVirtualMachine(java.lang.String,
+	 * com.infinities.skyport.compute.VMUpdateOptions)
+	 */
+	public VirtualMachine updateVirtualMachine(String virtualMachineId, VMUpdateOptions options) throws InternalException,
+			CloudException {
+		APITrace.begin(getProvider(), "VM.updateVirtualMachine");
+		try {
+			Map<String, Object> json = new HashMap<String, Object>();
+			Map<String, Object> server = new HashMap<String, Object>();
+			String name = options.getName();
+
+			server.put("name", name);
+			json.put("server", server);
+			getMethod().putServers("/servers", virtualMachineId, new JSONObject(json), null);
+			VirtualMachine vm = getVirtualMachine(virtualMachineId);
+			return vm;
+		} finally {
+			APITrace.end();
+		}
+	}
+
 }

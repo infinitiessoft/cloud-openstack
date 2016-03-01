@@ -35,6 +35,8 @@ import org.dasein.cloud.util.CacheLevel;
 import org.dasein.util.uom.time.Day;
 import org.dasein.util.uom.time.TimePeriod;
 
+import com.infinities.skyport.openstack.nova.os.SkyportNovaMethod;
+
 /**
  * This is a customized version of
  * org.dasein.cloud.openstack.nova.os.NovaOpenStack.
