@@ -28,11 +28,16 @@ import org.apache.log4j.Logger;
 import org.dasein.cloud.CloudException;
 import org.dasein.cloud.InternalException;
 import org.dasein.cloud.OperationNotSupportedException;
+import org.dasein.cloud.VisibleScope;
+import org.dasein.cloud.network.IPVersion;
 import org.dasein.cloud.network.NICCreateOptions;
 import org.dasein.cloud.network.NICState;
 import org.dasein.cloud.network.NetworkInterface;
 import org.dasein.cloud.network.RawAddress;
+import org.dasein.cloud.network.VLAN;
 import org.dasein.cloud.network.VLANCapabilities;
+import org.dasein.cloud.network.VLANState;
+import org.dasein.cloud.network.VlanCreateOptions;
 import org.dasein.cloud.openstack.nova.os.NovaOpenStack;
 import org.dasein.cloud.util.APITrace;
 import org.json.JSONArray;
@@ -379,5 +384,116 @@ public class SkyportQuantum extends Quantum implements SkyportVLANSupport {
 		}
 		return capabilities;
 	}
+	
+	@Override
+    public @Nonnull VLAN createVlan(@Nonnull VlanCreateOptions options) throws CloudException, InternalException {
+		return createVlan(options.getCidr(), options.getName(), options.getDescription(), options.getDomain(), options.getDnsServers(), options.getNtpServers());
+    }
 
+	@Override
+	protected @Nullable VLAN toVLAN(@Nonnull JSONObject network) throws CloudException, InternalException {
+        try {
+            VLAN v = new VLAN();
+
+            v.setProviderOwnerId(getTenantId());
+            v.setCurrentState(VLANState.AVAILABLE);
+            v.setProviderRegionId(getCurrentRegionId());
+            // FIXME: REMOVE: vlans are not constrained to a DC in openstack
+            //            Iterable<DataCenter> dc = getProvider().getDataCenterServices().listDataCenters(getContext().getRegionId());
+            //            v.setProviderDataCenterId(dc.iterator().next().getProviderDataCenterId());
+            v.setVisibleScope(VisibleScope.ACCOUNT_REGION);
+            
+            if( network.has("id") ) {
+                v.setProviderVlanId(network.getString("id"));
+            }
+            if( network.has("name") ) {
+                v.setName(network.getString("name"));
+            }
+            else if( network.has("label") ) {
+                v.setName(network.getString("label"));
+            }
+            if( network.has("cidr") ) {
+                v.setCidr(network.getString("cidr"));
+            }
+            if( network.has("status") ) {
+                v.setCurrentState(toState(network.getString("status")));
+            }
+            if( network.has("metadata") ) {
+                JSONObject md = network.getJSONObject("metadata");
+                String[] names = JSONObject.getNames(md);
+
+                if( names != null && names.length > 0 ) {
+                    for( String n : names ) {
+                        String value = md.getString(n);
+
+                        if( value != null ) {
+                            v.setTag(n, value);
+                            if( n.equals("org.dasein.description") && v.getDescription() == null ) {
+                                v.setDescription(value);
+                            }
+                            else if( n.equals("org.dasein.domain") && v.getDomainName() == null ) {
+                                v.setDomainName(value);
+                            }
+                            else if( n.startsWith("org.dasein.dns.") && !n.equals("org.dasein.dsn.") && v.getDnsServers().length < 1 ) {
+                                List<String> dns = new ArrayList<String>();
+
+                                try {
+                                    int idx = Integer.parseInt(n.substring("org.dasein.dns.".length() + 1));
+                                    if( value != null ) {
+                                        dns.add(idx - 1, value);
+                                    }
+                                }
+                                catch( NumberFormatException ignore ) {
+                                    // ignore
+                                }
+                                v.setDnsServers(dns.toArray(new String[dns.size()]));
+                            }
+                            else if( n.startsWith("org.dasein.ntp.") && !n.equals("org.dasein.ntp.") && v.getNtpServers().length < 1 ) {
+                                List<String> ntp = new ArrayList<String>();
+
+                                try {
+                                    int idx = Integer.parseInt(n.substring("org.dasein.ntp.".length()));
+                                    if( value != null ) {
+                                        ntp.add(idx - 1, value);
+                                    }
+                                }
+                                catch( NumberFormatException ignore ) {
+                                }
+                                v.setNtpServers(ntp.toArray(new String[ntp.size()]));
+                            }
+                        }
+                    }
+                }
+            }
+            if( v.getProviderVlanId() == null ) {
+                return null;
+            }
+            if( v.getCidr() == null ) {
+                v.setCidr("0.0.0.0/0");
+            }
+            if( v.getName() == null ) {
+                v.setName(v.getCidr());
+                if( v.getName() == null ) {
+                    v.setName(v.getProviderVlanId());
+                }
+            }
+            if( v.getDescription() == null ) {
+                v.setDescription(v.getName());
+            }
+            v.setSupportedTraffic(IPVersion.IPV4, IPVersion.IPV6);
+            
+            // Add by tata
+            if (network.has("tenant_id")) {
+            	v.setTag("tenant_id", network.getString("tenant_id"));
+            }
+            
+            if (network.has("subnets")) {
+            	v.setTag("subnets", network.getString("subnets"));
+            }
+            return v;
+        }
+        catch( JSONException e ) {
+            throw new CloudException("Invalid JSON from cloud: " + e.getMessage());
+        }
+	}
 }
