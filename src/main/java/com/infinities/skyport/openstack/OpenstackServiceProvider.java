@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 
 import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.dasein.cloud.openstack.nova.os.network.SkyportNovaNetworkServices;
+import org.dasein.cloud.openstack.nova.os.storage.SkyportSwiftStorageServices;
 
 import com.infinities.skyport.ServiceProvider;
 import com.infinities.skyport.annotation.Provider;
@@ -69,6 +70,11 @@ public class OpenstackServiceProvider extends SkyportNovaOpenStack implements Se
 	@Override
 	public @Nullable SkyportNovaNetworkServices getSkyportNetworkServices() {
 		return new SkyportNovaNetworkServices(this);
+	}
+
+	@Override
+	public SkyportSwiftStorageServices getSkyportStorageServices() throws ConcurrentException {
+		return new SkyportSwiftStorageServices(this);
 	}
 
 }
